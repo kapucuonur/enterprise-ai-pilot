@@ -296,6 +296,7 @@
     if (f.startsWith("injection_chunk_dropped")) return "flag flag-injection";
     if (f.startsWith("llm_fallback")) return "flag flag-fallback";
     if (f.startsWith("ungrounded_citation_removed")) return "flag flag-ungrounded";
+    if (f === "no_citation") return "flag flag-ungrounded";
     return "flag";
   }
 

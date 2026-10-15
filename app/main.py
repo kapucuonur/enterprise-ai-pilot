@@ -24,7 +24,33 @@ from .security import RateLimiter, User, authenticate, looks_like_injection, red
 
 ROOT = Path(__file__).resolve().parent.parent
 NO_ANSWER = "I do not have enough information to answer that from the documents available to you."
-_CITATION = re.compile(r"\[([a-z0-9_\-]+)\]")
+_BRACKET = re.compile(r"\[([^\[\]\n]{1,200})\]")
+_CITE_LABEL = re.compile(r"^(?:doc_id|doc|source|id)\s*[:=]\s*", re.IGNORECASE)
+_DOC_ID = re.compile(r"[a-z0-9_\-]+")
+_REFUSAL = re.compile(r"(do not|don't) have enough information", re.IGNORECASE)
+
+
+def _check_citations(answer: str, allowed: set[str]) -> tuple[str, bool, int]:
+    """Normalise citation variants to [id], strip ids outside `allowed`.
+
+    Accepts [handbook], [doc_id: handbook], [doc: handbook], [source: handbook] and several
+    ids in one bracket ([handbook, contacts]). A bracket only counts as a citation when every
+    part looks like a document id, so ordinary bracketed prose is left alone.
+    Returns (answer, removed_any_invalid, number_of_valid_citations).
+    """
+    removed, valid = False, 0
+
+    def fix(m: re.Match) -> str:
+        nonlocal removed, valid
+        ids = [_CITE_LABEL.sub("", part.strip()).lower() for part in re.split(r"[,;]", m.group(1))]
+        if not all(_DOC_ID.fullmatch(i) for i in ids):
+            return m.group(0)  # not a citation
+        kept = [i for i in ids if i in allowed]
+        removed |= len(kept) < len(ids)
+        valid += len(kept)
+        return " ".join(f"[{i}]" for i in kept)
+
+    return _BRACKET.sub(fix, answer), removed, valid
 
 
 class AskRequest(BaseModel):
@@ -119,11 +145,13 @@ def create_app(
             answer = fallback.generate(req.question, contexts)
 
         allowed_ids = {c.doc_id for c in contexts}
-        cited = set(_CITATION.findall(answer))
-        invalid = cited - allowed_ids
-        if invalid:  # citation that does not match any retrieved doc = ungrounded
+        answer, removed, valid_citations = _check_citations(answer, allowed_ids)
+        if removed:  # citation that does not match any retrieved doc = ungrounded
             flags.append("ungrounded_citation_removed")
-            answer = _CITATION.sub(lambda m: m.group(0) if m.group(1) in allowed_ids else "", answer)
+        # An answer that cites none of the given sources cannot be traced back. Flag it, do not
+        # block it. Refusals ("I do not have enough information") need no citation.
+        if not valid_citations and not _REFUSAL.search(answer):
+            flags.append("no_citation")
 
         answer, pii = redact(answer)
         if pii:
