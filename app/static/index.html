@@ -280,6 +280,9 @@
   const providerSel = $("provider");
   const userSel = $("user"), q = $("question"), askBtn = $("ask"), verifyBtn = $("verify");
   const providerModels = {};
+  const MODEL_KEY = "eap.provider";  // per-browser convenience only; the server still validates every choice
+  function loadChoice() { try { return localStorage.getItem(MODEL_KEY); } catch (e) { return null; } }
+  function saveChoice(id) { try { localStorage.setItem(MODEL_KEY, id); } catch (e) { /* storage blocked */ } }
 
   function el(tag, text, cls) {
     const e = document.createElement(tag);
@@ -403,18 +406,20 @@
   }
 
   userSel.addEventListener("change", syncUser);
-  providerSel.addEventListener("change", syncModelPill);
+  providerSel.addEventListener("change", () => { saveChoice(providerSel.value); syncModelPill(); });
   askBtn.addEventListener("click", ask);
   verifyBtn.addEventListener("click", verify);
   q.addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) ask(); });
   fetch("/health").then((r) => r.json()).then((h) => { $("model").textContent = h.llm; }).catch(() => {});
   fetch("/providers").then((r) => r.json()).then((p) => {
     providerSel.replaceChildren();
+    const saved = loadChoice();
+    const preferred = p.providers.some(({ id }) => id === saved) ? saved : p.default;
     p.providers.forEach(({ id, model }) => {
       providerModels[id] = model;
       const opt = el("option", `${PROVIDER_LABELS[id] || id} — ${model}`);
       opt.value = id;
-      opt.selected = id === p.default;
+      opt.selected = id === preferred;
       providerSel.append(opt);
     });
     syncModelPill();
