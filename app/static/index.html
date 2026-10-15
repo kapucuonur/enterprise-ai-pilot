@@ -324,9 +324,16 @@
     if (!body.sources.length) {
       src.append(el("span", "No sources visible to this user.", "none"));
     } else {
+      // One chip per document: several passages from the same doc show its best score.
+      const byDoc = new Map();
       body.sources.forEach((s) => {
+        const d = byDoc.get(s.doc_id);
+        if (d) { d.count += 1; d.score = Math.max(d.score, s.score); }
+        else byDoc.set(s.doc_id, { ...s, count: 1 });
+      });
+      byDoc.forEach((s) => {
         const chip = el("span", undefined, "chip");
-        chip.title = s.doc_id;
+        chip.title = s.count > 1 ? `${s.doc_id} · ${s.count} passages, best score shown` : s.doc_id;
         chip.append(el("span", s.title, "chip-title"), el("span", s.score.toFixed(2), "score"));
         src.append(chip);
       });
