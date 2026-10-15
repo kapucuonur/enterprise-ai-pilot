@@ -27,8 +27,8 @@ Demo identities: `key-alice` (HR), `key-bob` (engineering), `key-carol` (finance
 Try asking for salary bands as bob, then as alice.
 
 ```bash
-python -m pytest -q        # 54 tests, no network
-python -m eval.run_eval    # groundedness / leakage / refusal / safety gates (exit 1 on failure)
+python -m pytest -q        # 66 tests, no network
+python -m eval.run_eval    # groundedness / leakage / refusal / citation / safety gates (exit 1 on failure)
 ```
 
 ## Real models (optional)
@@ -113,7 +113,7 @@ the request is refused without calling the model. Thresholds live at the top of
 | Access control | Filter by role **before** retrieval, so forbidden text never reaches the prompt | SSO/OIDC, group-to-role mapping, per-document ACL sync |
 | Data leakage | PII (email, phone, IBAN, Finnish HETU) redacted in answers and never written to logs | Dedicated DLP service, EU data residency for the model endpoint |
 | Prompt injection | Heuristics on the query and on retrieved chunks; model told context is data | Classifier-based guard, tool/permission isolation |
-| Hallucination | Relevance gate drops off-topic chunks; refuses without context; citations must match retrieved docs | Faithfulness evals on a larger labelled set |
+| Hallucination | Relevance gate drops off-topic chunks; refuses without context; citations must match the chunks the model was given, uncited answers flagged `no_citation` | Faithfulness evals on a larger labelled set |
 | Auditability | Append-only JSONL, each record hashes the previous one; `/audit/verify` | Ship to SIEM, WORM storage |
 | Vendor lock-in | `LLM` interface; mock, Gemini, Claude, local Ollama; swap in Azure OpenAI | Routing by cost, latency, data class |
 | Reliability | Provider failure degrades to extractive answer, request still succeeds | Circuit breaker, retries with jitter |
@@ -124,6 +124,12 @@ the request is refused without calling the model. Thresholds live at the top of
 - Retrieval is BM25 with a lexical relevance gate for clarity; real deployments add embeddings,
   a reranker and a tuned score threshold.
 - Injection and PII detection are heuristic, which is why they are layered with ACLs, refusal and audit.
+- Citation validation checks source IDs, not meaning. It normalises `[doc_id: x]`, `[doc: x]`,
+  `[source: x]` and several ids in one bracket to `[x]`, strips any id the model was not given
+  (`ungrounded_citation_removed`), and flags answers with no valid citation (`no_citation`)
+  without blocking them. It does not verify that the cited chunk actually supports the claim;
+  quote matching or an entailment check would be the next layer. Citations are per document,
+  not per chunk.
 - Demo API keys live in code and in the web UI. They are fake and public; never reuse them.
   Real provider keys only go in your local `.env`.
 - **Rate limiting is in-memory and per process.** Each uvicorn worker or replica keeps its own
