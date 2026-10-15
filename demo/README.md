@@ -7,6 +7,7 @@ the same salary question), PII redaction, and the sources/flags panel.
 pip install -r demo/requirements.txt
 python -m playwright install chromium ffmpeg   # chromium is optional if Google Chrome is installed
 python demo/record_demo.py              # -> demo/demo.webm, plus demo/demo.mp4 if ffmpeg is on PATH
+python demo/take_screenshots.py         # -> docs/images/*.png used by the main README
 ```
 
 The recording is not committed (see `.gitignore`); regenerate it with the command above.

@@ -123,7 +123,7 @@ def walkthrough(page: Page, base: str) -> None:
 
     caption(page, "bob (engineering) asks about salary bands")
     ask(page, "key-bob", SALARY_Q)
-    caption(page, "HR documents are filtered out before retrieval: no salary data reaches bob")
+    caption(page, "No answer for bob. HR documents are filtered out before retrieval, so the model is never called")
     page.wait_for_timeout(PAUSE_MS)
 
     page.evaluate("window.scrollTo({top: 0, behavior: 'smooth'})")
