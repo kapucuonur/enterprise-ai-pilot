@@ -1,0 +1,20 @@
+# Secrets: never commit real keys. Copy .env.example to .env and fill it locally.
+.env
+.env.*
+!.env.example
+
+# Local runtime artifacts
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+audit.jsonl
+*.log
+
+# Demo recordings (regenerate with: python demo/record_demo.py)
+demo/*.webm
+demo/*.mp4
+demo/_video/
+
+# Private notes, kept outside the repo
+INTERVIEW_NOTES.md
