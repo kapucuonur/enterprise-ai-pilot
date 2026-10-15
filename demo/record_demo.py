@@ -25,7 +25,7 @@ from playwright.sync_api import Browser, Page, sync_playwright
 ROOT = Path(__file__).resolve().parent.parent
 OUT = Path(__file__).resolve().parent
 SIZE = {"width": 1280, "height": 720}
-PAUSE_MS = 2500
+PAUSE_MS = 3000  # how long each explanation caption stays on screen
 SALARY_Q = "What are the salary bands for senior engineer?"
 HELPDESK_Q = "Who is the IT helpdesk contact, email and phone?"
 
@@ -95,6 +95,13 @@ def caption(page: Page, text: str = "") -> None:
     page.evaluate(CAPTION_JS, text)
 
 
+def to_top(page: Page) -> None:
+    """Hide the caption while scrolling back up, so it never sits on top of an old answer."""
+    caption(page, "")
+    page.evaluate("window.scrollTo({top: 0, behavior: 'smooth'})")
+    page.wait_for_timeout(700)
+
+
 def show(page: Page, selector: str) -> None:
     """Scroll so the element sits in the middle of the viewport, above the caption."""
     page.eval_on_selector(selector, "el => el.scrollIntoView({block: 'center', behavior: 'smooth'})")
@@ -108,16 +115,17 @@ def ask(page: Page, user_key: str, question: str) -> None:
     page.type("#question", question, delay=35)
     page.wait_for_timeout(300)
     page.click("#ask")
+    caption(page, "")  # the action caption is done; the caller explains the result
     page.wait_for_selector("#ask:not([disabled])")
     page.wait_for_selector("#result:not([hidden])")
     show(page, "#sources")
-    page.wait_for_timeout(PAUSE_MS)
 
 
 def walkthrough(page: Page, base: str) -> None:
     page.goto(base)
     page.wait_for_selector("#provider option[value='mock']", state="attached")
     page.evaluate("document.documentElement.style.zoom = '1.25'")  # readable at 1280x720
+    page.evaluate("document.getElementById('question').spellcheck = false")  # no red squiggles on camera
     caption(page, "Enterprise AI Pilot · governed Q&A over internal documents (offline mock model)")
     page.wait_for_timeout(PAUSE_MS)
 
@@ -126,13 +134,13 @@ def walkthrough(page: Page, base: str) -> None:
     caption(page, "No answer for bob. HR documents are filtered out before retrieval, so the model is never called")
     page.wait_for_timeout(PAUSE_MS)
 
-    page.evaluate("window.scrollTo({top: 0, behavior: 'smooth'})")
+    to_top(page)
     caption(page, "Switch to alice (HR) and ask the same question")
     ask(page, "key-alice", SALARY_Q)
     caption(page, "Same question, different role, different answer, with its source")
     page.wait_for_timeout(PAUSE_MS)
 
-    page.evaluate("window.scrollTo({top: 0, behavior: 'smooth'})")
+    to_top(page)
     caption(page, "bob asks for the IT helpdesk email and phone")
     ask(page, "key-bob", HELPDESK_Q)
     caption(page, "Email and phone are redacted before the answer leaves the server")
