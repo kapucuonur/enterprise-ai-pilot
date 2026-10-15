@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Enterprise AI Pilot</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --bg: #eef2f7;
+    --card: #ffffff;
+    --fg: #172033;
+    --muted: #556275;
+    --line: #d9e0ea;
+    --field: #ffffff;
+    --shadow: 0 1px 2px rgba(23, 32, 51, .06), 0 4px 16px rgba(23, 32, 51, .06);
+    --accent: #1d4ed8;
+    --accent-hover: #1e40af;
+    --accent-fg: #ffffff;
+    --accent-text: #1d4ed8;
+    --focus: 0 0 0 3px rgba(29, 78, 216, .35);
+
+    --chip-bg: #f1f4f9;
+    --chip-fg: #26324a;
+    --score-bg: #dbe4f3;
+
+    --amber-bg: #fff4dc;  --amber-fg: #7a4a00;  --amber-line: #f2cf88;
+    --red-bg:   #fde8e8;  --red-fg:   #9b1c1c;  --red-line:   #f3b4b4;
+    --gray-bg:  #eceff3;  --gray-fg:  #3f4b5c;  --gray-line:  #cdd3dc;
+    --purple-bg:#f1e9fe;  --purple-fg:#5b21b6;  --purple-line:#d5c0f7;
+    --blue-bg:  #e6eefc;  --blue-fg:  #1e3a8a;  --blue-line:  #bcd0f5;
+    --green-bg: #e3f5ea;  --green-fg: #14532d;  --green-line: #a9dcbc;
+    --pink-bg:  #fce7f1;  --pink-fg:  #8a1a4b;  --pink-line:  #f2b8d2;
+
+    --ok: #15803d;
+    --bad: #b91c1c;
+    --noinfo-bg: #f4f6f9;
+    --error-bg: #fff5f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1522;
+      --card: #172031;
+      --fg: #e6ebf3;
+      --muted: #9aa7ba;
+      --line: #2b3850;
+      --field: #111a29;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 16px rgba(0, 0, 0, .3);
+      --accent: #2f5fdc;
+      --accent-hover: #2850c0;
+      --accent-fg: #ffffff;
+      --accent-text: #9db8ff;
+      --focus: 0 0 0 3px rgba(91, 134, 245, .5);
+
+      --chip-bg: #1f2a3f;
+      --chip-fg: #d8e0ec;
+      --score-bg: #2c3b57;
+
+      --amber-bg: #3a2a0c;  --amber-fg: #fcd68a;  --amber-line: #6b4d15;
+      --red-bg:   #3d1717;  --red-fg:   #fca5a5;  --red-line:   #6e2626;
+      --gray-bg:  #253044;  --gray-fg:  #cfd7e3;  --gray-line:  #3a4760;
+      --purple-bg:#2c1f4a;  --purple-fg:#d6c2fb;  --purple-line:#4b3680;
+      --blue-bg:  #1c2b4d;  --blue-fg:  #bcd0f8;  --blue-line:  #31477a;
+      --green-bg: #15301f;  --green-fg: #a7e3bd;  --green-line: #285a3a;
+      --pink-bg:  #3a1a2a;  --pink-fg:  #f6bcd6;  --pink-line:  #6a2f4a;
+
+      --ok: #4ade80;
+      --bad: #f87171;
+      --noinfo-bg: #1b2436;
+      --error-bg: #2a1719;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  main { max-width: 720px; margin: 0 auto; padding: 32px 16px 56px; }
+
+  /* Header */
+  header { margin-bottom: 20px; }
+  h1 { font-size: 22px; line-height: 1.25; margin: 0; letter-spacing: -.01em; }
+  .sub { color: var(--muted); margin: 4px 0 12px; font-size: 14px; }
+  .model-pill {
+    display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+    padding: 3px 10px; border-radius: 999px; font-size: 12px;
+    background: var(--card); border: 1px solid var(--line); color: var(--muted);
+  }
+  .model-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; }
+  .model-pill #model {
+    color: var(--fg); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: var(--shadow); padding: 20px; margin-bottom: 16px;
+  }
+
+  /* Form */
+  .field + .field { margin-top: 16px; }
+  label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 6px; }
+  .label-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+  .label-row label { margin: 0; }
+  select, textarea, button { font: inherit; color: inherit; }
+  select, textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--field); color: var(--fg);
+  }
+  textarea { min-height: 96px; resize: vertical; line-height: 1.5; }
+  textarea::placeholder { color: var(--muted); }
+  select:focus-visible, textarea:focus-visible, button:focus-visible {
+    outline: none; box-shadow: var(--focus); border-color: var(--accent);
+  }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 6px; }
+
+  .actions { display: flex; gap: 10px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+  button {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 18px; border-radius: 8px; border: 1px solid var(--accent);
+    background: var(--accent); color: var(--accent-fg); font-weight: 600; cursor: pointer;
+    transition: background-color .15s, border-color .15s;
+  }
+  button:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+  button:disabled { opacity: .85; cursor: progress; }
+  button.secondary {
+    background: transparent; color: var(--accent-text); font-size: 13px; padding: 8px 12px;
+  }
+  button.secondary:hover:not(:disabled) { background: var(--blue-bg); color: var(--accent-text); }
+  #verifyResult { font-size: 13px; font-weight: 600; }
+
+  .spinner {
+    width: 14px; height: 14px; border-radius: 50%; flex: none;
+    border: 2px solid rgba(255, 255, 255, .45); border-top-color: #fff;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
+
+  /* Chips & pills */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+    padding: 4px 4px 4px 10px; border-radius: 999px; font-size: 13px;
+    background: var(--chip-bg); color: var(--chip-fg); border: 1px solid var(--line);
+  }
+  .chip .chip-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chip .score {
+    font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 600;
+    padding: 1px 8px; border-radius: 999px; background: var(--score-bg);
+  }
+  .role {
+    display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;
+    letter-spacing: .02em; text-transform: lowercase; border: 1px solid;
+  }
+  .role-engineering { background: var(--blue-bg);   color: var(--blue-fg);   border-color: var(--blue-line); }
+  .role-hr          { background: var(--pink-bg);   color: var(--pink-fg);   border-color: var(--pink-line); }
+  .role-finance     { background: var(--green-bg);  color: var(--green-fg);  border-color: var(--green-line); }
+  .role-admin       { background: var(--amber-bg);  color: var(--amber-fg);  border-color: var(--amber-line); }
+
+  .flag {
+    display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+    padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    border: 1px solid var(--blue-line); background: var(--blue-bg); color: var(--blue-fg);
+    overflow-wrap: anywhere;
+  }
+  .flag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+  .flag-pii        { background: var(--amber-bg);  color: var(--amber-fg);  border-color: var(--amber-line); }
+  .flag-injection  { background: var(--red-bg);    color: var(--red-fg);    border-color: var(--red-line); }
+  .flag-fallback   { background: var(--gray-bg);   color: var(--gray-fg);   border-color: var(--gray-line); }
+  .flag-ungrounded { background: var(--purple-bg); color: var(--purple-fg); border-color: var(--purple-line); }
+
+  /* Result */
+  #result { border-left: 4px solid var(--accent); }
+  #result.result-noinfo { background: var(--noinfo-bg); border-left-color: var(--gray-line); }
+  #result.result-error  { background: var(--error-bg);  border-left-color: var(--bad); }
+  h2 {
+    font-size: 12px; font-weight: 700; margin: 20px 0 8px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  h2:first-child { margin-top: 0; }
+  #answer { font-size: 17px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+  #answer.error { color: var(--bad); font-weight: 600; }
+  .result-noinfo #answer { color: var(--muted); }
+  .none { color: var(--muted); font-size: 13px; }
+  .error { color: var(--bad); }
+  .ok { color: var(--ok); }
+  .meta {
+    color: var(--muted); font-size: 12px; margin-top: 16px; padding-top: 12px;
+    border-top: 1px solid var(--line); overflow-wrap: anywhere;
+  }
+  .meta .fallback { color: var(--amber-fg); font-weight: 600; }
+  .meta:empty, #verifyResult:empty { display: none; }
+  [hidden] { display: none !important; }
+
+  @media (max-width: 480px) {
+    main { padding: 20px 16px 40px; }
+    .card { padding: 16px; }
+    h1 { font-size: 20px; }
+    #answer { font-size: 16px; }
+    .actions button#ask { flex: 1 1 auto; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Enterprise AI Pilot</h1>
+    <p class="sub">Governed Q&amp;A over internal documents, with access control, redaction and audit.</p>
+    <span class="model-pill" title="Model that will answer"><span class="dot" aria-hidden="true"></span><span id="model">…</span></span>
+  </header>
+
+  <div class="card">
+    <div class="field">
+      <div class="label-row">
+        <label for="user">User</label>
+        <span id="roles" class="chips" aria-live="polite"></span>
+      </div>
+      <select id="user">
+        <option value="key-alice">alice (HR)</option>
+        <option value="key-bob" selected>bob (engineering)</option>
+        <option value="key-carol">carol (finance)</option>
+        <option value="key-dave">dave (admin)</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="provider">Model</label>
+      <select id="provider"><option value="">Loading…</option></select>
+    </div>
+
+    <div class="field">
+      <label for="question">Question</label>
+      <textarea id="question" maxlength="1000" placeholder="How many vacation days do employees get?" aria-describedby="question-hint"></textarea>
+      <div class="hint" id="question-hint">Press ⌘/Ctrl + Enter to ask. Local models can take 10–30 s.</div>
+    </div>
+
+    <div class="actions">
+      <button id="ask">Ask</button>
+      <button id="verify" class="secondary" hidden>Verify audit log</button>
+      <span id="verifyResult" role="status"></span>
+    </div>
+  </div>
+
+  <div class="card" id="result" hidden aria-live="polite">
+    <h2>Answer</h2>
+    <div id="answer"></div>
+    <h2>Sources</h2>
+    <div id="sources" class="chips"></div>
+    <h2>Flags</h2>
+    <div id="flags" class="chips"></div>
+    <div class="meta" id="rid"></div>
+  </div>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const PROVIDER_LABELS = {
+    mock: "Mock (offline, extractive)",
+    claude: "Claude (API)",
+    ollama: "Ollama (this machine)",
+    "ollama-remote": "Ollama (remote)",
+    gemini: "Gemini (API)",
+    default: "Default",
+  };
+  // Display only: mirrors the demo identities in app/security.py.
+  const USER_ROLES = {
+    "key-alice": ["hr"],
+    "key-bob": ["engineering"],
+    "key-carol": ["finance"],
+    "key-dave": ["admin"],
+  };
+  const NO_INFO = /(do not|don't) have enough information/i;
+  const providerSel = $("provider");
+  const userSel = $("user"), q = $("question"), askBtn = $("ask"), verifyBtn = $("verify");
+  const providerModels = {};
+
+  function el(tag, text, cls) {
+    const e = document.createElement(tag);
+    if (text !== undefined) e.textContent = text;
+    if (cls) e.className = cls;
+    return e;
+  }
+
+  function flagClass(f) {
+    if (f.startsWith("pii_redacted")) return "flag flag-pii";
+    if (f.startsWith("injection_chunk_dropped")) return "flag flag-injection";
+    if (f.startsWith("llm_fallback")) return "flag flag-fallback";
+    if (f.startsWith("ungrounded_citation_removed")) return "flag flag-ungrounded";
+    return "flag";
+  }
+
+  function syncUser() {
+    verifyBtn.hidden = userSel.value !== "key-dave";
+    $("verifyResult").textContent = "";
+    const roles = $("roles");
+    roles.replaceChildren();
+    (USER_ROLES[userSel.value] || []).forEach((r) => roles.append(el("span", r, "role role-" + r)));
+  }
+
+  function syncModelPill() {
+    if (providerModels[providerSel.value]) $("model").textContent = providerModels[providerSel.value];
+  }
+
+  function render(body) {
+    const card = $("result");
+    card.hidden = false;
+    card.className = "card" + (NO_INFO.test(body.answer) ? " result-noinfo" : "");
+    $("answer").className = "";
+    $("answer").textContent = body.answer;
+
+    const src = $("sources");
+    src.replaceChildren();
+    if (!body.sources.length) {
+      src.append(el("span", "No sources visible to this user.", "none"));
+    } else {
+      body.sources.forEach((s) => {
+        const chip = el("span", undefined, "chip");
+        chip.title = s.doc_id;
+        chip.append(el("span", s.title, "chip-title"), el("span", s.score.toFixed(2), "score"));
+        src.append(chip);
+      });
+    }
+
+    const fl = $("flags");
+    fl.replaceChildren();
+    if (!body.flags.length) fl.append(el("span", "none", "none"));
+    body.flags.forEach((f) => fl.append(el("span", f, flagClass(f))));
+
+    const meta = $("rid");
+    meta.replaceChildren(el("span", "request_id: " + body.request_id));
+    if (body.model) {
+      const fellBack = body.flags.some((f) => f.startsWith("llm_fallback"));
+      meta.append(el("span", " · answered by: "),
+                  el("span", body.model + (fellBack ? " (fallback)" : ""), fellBack ? "fallback" : ""));
+    }
+  }
+
+  function renderError(msg) {
+    const card = $("result");
+    card.hidden = false;
+    card.className = "card result-error";
+    $("answer").className = "error";
+    $("answer").textContent = msg;
+    $("sources").replaceChildren(el("span", "—", "none"));
+    $("flags").replaceChildren(el("span", "—", "none"));
+    $("rid").textContent = "";
+  }
+
+  function setBusy(busy) {
+    askBtn.disabled = busy;
+    askBtn.setAttribute("aria-busy", busy ? "true" : "false");
+    clearInterval(setBusy.timer);
+    if (!busy) { askBtn.replaceChildren("Ask"); return; }
+    const started = Date.now();
+    const label = el("span", "Thinking…");
+    askBtn.replaceChildren(el("span", undefined, "spinner"), label);
+    setBusy.timer = setInterval(() => {
+      label.textContent = `Thinking… ${Math.round((Date.now() - started) / 1000)}s`;
+    }, 1000);
+  }
+
+  async function ask() {
+    const question = q.value.trim();
+    if (question.length < 3) { renderError("Question must be at least 3 characters."); return; }
+    setBusy(true);
+    try {
+      const r = await fetch("/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-API-Key": userSel.value },
+        body: JSON.stringify(providerSel.value ? { question, provider: providerSel.value } : { question }),
+      });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) renderError(`${r.status}: ${typeof body.detail === "string" ? body.detail : "Request failed"}`);
+      else render(body);
+    } catch (e) {
+      renderError("Network error: " + e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function verify() {
+    const out = $("verifyResult");
+    out.className = "";
+    out.textContent = "Checking…";
+    try {
+      const r = await fetch("/audit/verify", { headers: { "X-API-Key": userSel.value } });
+      const body = await r.json();
+      if (!r.ok) { out.className = "error"; out.textContent = body.detail || r.status; return; }
+      out.className = body.intact ? "ok" : "error";
+      out.textContent = (body.intact ? "✓ Intact" : "✗ TAMPERED") + ` · ${body.records} records`;
+    } catch (e) {
+      out.className = "error";
+      out.textContent = "Network error";
+    }
+  }
+
+  userSel.addEventListener("change", syncUser);
+  providerSel.addEventListener("change", syncModelPill);
+  askBtn.addEventListener("click", ask);
+  verifyBtn.addEventListener("click", verify);
+  q.addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) ask(); });
+  fetch("/health").then((r) => r.json()).then((h) => { $("model").textContent = h.llm; }).catch(() => {});
+  fetch("/providers").then((r) => r.json()).then((p) => {
+    providerSel.replaceChildren();
+    p.providers.forEach(({ id, model }) => {
+      providerModels[id] = model;
+      const opt = el("option", `${PROVIDER_LABELS[id] || id} — ${model}`);
+      opt.value = id;
+      opt.selected = id === p.default;
+      providerSel.append(opt);
+    });
+    syncModelPill();
+  }).catch(() => { providerSel.replaceChildren(el("option", "Default")); });
+  syncUser();
+</script>
+</body>
+</html>
