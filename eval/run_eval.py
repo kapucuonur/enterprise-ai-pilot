@@ -26,6 +26,13 @@ CASES = [
     ("key-bob", "Payroll IBAN?", None, ["FI21 1234"], None),
 ]
 
+# Questions with no answer in the documents the user may see: must refuse, LLM never called.
+UNANSWERABLE = [
+    ("key-alice", "What is the office wifi password?"),
+    ("key-carol", "Who won the football match last night?"),
+    ("key-dave", "What is the parking policy for senior engineers?"),  # only generic terms overlap
+]
+
 
 def main() -> int:
     with tempfile.TemporaryDirectory() as tmp:
@@ -50,14 +57,23 @@ def main() -> int:
         ).status_code
         no_ctx = client.post("/ask", json={"question": "What is the capital of Mars?"},
                              headers={"X-API-Key": "key-bob"}).json()["answer"] == NO_ANSWER
+        refused = 0
+        for key, q in UNANSWERABLE:
+            body = client.post("/ask", json={"question": q}, headers={"X-API-Key": key}).json()
+            if body["answer"] == NO_ANSWER and not body["sources"]:
+                refused += 1
+            else:
+                print(f"ANSWERED  {q!r} -> {body['answer']!r}")
         ok, n = client.app.state.audit.verify()
 
     print(f"groundedness : {grounded}/{total_pos}")
     print(f"leaks        : {leaks}  (gate: 0)")
     print(f"injection    : blocked={injection == 400}")
     print(f"refuses when no context: {no_ctx}")
+    print(f"unanswerable : {refused}/{len(UNANSWERABLE)} refused  (gate: all)")
     print(f"audit chain  : intact={ok} records={n}")
-    gates = [grounded == total_pos, leaks == 0, injection == 400, no_ctx, ok]
+    gates = [grounded == total_pos, leaks == 0, injection == 400, no_ctx,
+             refused == len(UNANSWERABLE), ok]
     print("RESULT:", "PASS" if all(gates) else "FAIL")
     return 0 if all(gates) else 1
 
