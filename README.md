@@ -1,5 +1,7 @@
 # Enterprise AI Pilot
 
+![Side by side: bob from engineering asks for the senior engineer salary bands and gets "I do not have enough information", with no sources; alice from HR asks the same question and gets the salary bands with the Salary Bands document as source.](docs/images/role-comparison.png)
+
 A small, runnable, source-available reference for taking an internal-knowledge AI assistant from
 "works in a demo" to "something an enterprise security team can say yes to".
 It answers questions over company documents and shows the governance layer
@@ -25,8 +27,8 @@ Demo identities: `key-alice` (HR), `key-bob` (engineering), `key-carol` (finance
 Try asking for salary bands as bob, then as alice.
 
 ```bash
-python -m pytest -q        # 47 tests, no network
-python -m eval.run_eval    # groundedness / leakage / safety gates (exit 1 on failure)
+python -m pytest -q        # 54 tests, no network
+python -m eval.run_eval    # groundedness / leakage / refusal / safety gates (exit 1 on failure)
 ```
 
 ## Real models (optional)
@@ -76,17 +78,33 @@ exposing it on the network:
 ## Demo video
 
 `python demo/record_demo.py` records a ~30 s walkthrough (role-based access, PII redaction,
-sources and flags) to `demo/demo.webm` / `demo/demo.mp4`. It always runs the mock model with a
-scrubbed environment. Recordings are not committed; see [demo/README.md](demo/README.md).
+sources and flags) to `demo/demo.webm` / `demo/demo.mp4`, and `python demo/take_screenshots.py`
+regenerates the images in `docs/images/`. Both always run the mock model with a scrubbed
+environment. Recordings are not committed; see [demo/README.md](demo/README.md).
 
-## Request pipeline
+## Architecture
+
+![Request pipeline: question, then auth and rate limit, injection check, ACL-filtered retrieval, then the LLM, then citation validation, PII redaction and the audit log. The LLM is drawn as a dashed purple box because it is the only non-deterministic step; every other step is code covered by tests and eval gates.](docs/images/architecture.svg)
+
+The model is one box in the middle. Everything around it is plain code that decides what the
+model may see and what the user may get back:
 
 ```
-authn -> rate limit -> injection check (query) -> ACL-filtered retrieval
+authn -> rate limit -> injection check (query) -> ACL-filtered retrieval -> relevance gate
       -> drop poisoned chunks -> no context? refuse (LLM never called)
       -> LLM (fallback on failure) -> citation validation
       -> output PII redaction -> hash-chained audit record
 ```
+
+Retrieval applies the role filter first, then a relevance gate: a chunk is kept only if it
+matches at least two distinct question terms (or half of a short question), clears a small
+BM25 minimum, and does not match on generic words like "engineer" alone. If nothing survives,
+the request is refused without calling the model. Thresholds live at the top of
+`app/retrieval.py`.
+
+<p align="center">
+  <img src="docs/images/pii-redaction.png" width="520" alt="bob asks for the IT helpdesk email and phone; the answer shows the contact name with the email and phone replaced by REDACTED_EMAIL and REDACTED_PHONE, the Contacts source with its score, and a pii_redacted flag.">
+</p>
 
 ## Governance decisions (and why)
 
@@ -95,15 +113,16 @@ authn -> rate limit -> injection check (query) -> ACL-filtered retrieval
 | Access control | Filter by role **before** retrieval, so forbidden text never reaches the prompt | SSO/OIDC, group-to-role mapping, per-document ACL sync |
 | Data leakage | PII (email, phone, IBAN, Finnish HETU) redacted in answers and never written to logs | Dedicated DLP service, EU data residency for the model endpoint |
 | Prompt injection | Heuristics on the query and on retrieved chunks; model told context is data | Classifier-based guard, tool/permission isolation |
-| Hallucination | Refuses without context; citations must match retrieved docs | Faithfulness evals on a larger labelled set |
+| Hallucination | Relevance gate drops off-topic chunks; refuses without context; citations must match retrieved docs | Faithfulness evals on a larger labelled set |
 | Auditability | Append-only JSONL, each record hashes the previous one; `/audit/verify` | Ship to SIEM, WORM storage |
 | Vendor lock-in | `LLM` interface; mock, Gemini, Claude, local Ollama; swap in Azure OpenAI | Routing by cost, latency, data class |
 | Reliability | Provider failure degrades to extractive answer, request still succeeds | Circuit breaker, retries with jitter |
-| Regression | Eval gates run in CI: zero leaks, full groundedness | Larger eval set, red-team prompts |
+| Regression | Eval gates run in CI: zero leaks, full groundedness, unanswerable questions refused | Larger eval set, red-team prompts |
 
 ## Honest limits
 
-- Retrieval is BM25 for clarity; real deployments add embeddings and a reranker.
+- Retrieval is BM25 with a lexical relevance gate for clarity; real deployments add embeddings,
+  a reranker and a tuned score threshold.
 - Injection and PII detection are heuristic, which is why they are layered with ACLs, refusal and audit.
 - Demo API keys live in code and in the web UI. They are fake and public; never reuse them.
   Real provider keys only go in your local `.env`.
@@ -120,7 +139,8 @@ app/static/ index.html single-page UI served at "/" (plain JS, uses /providers, 
 data/docs/  sample corpus with per-document access roles
 tests/      behaviour tests incl. ACL, redaction, injection, tamper detection, providers (mocked), UI route
 eval/       run_eval.py offline quality and safety gates
-demo/       record_demo.py Playwright walkthrough recorder
+demo/       record_demo.py and take_screenshots.py (Playwright, mock mode)
+docs/images README screenshots and architecture diagram
 ```
 
 ## License
