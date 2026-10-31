@@ -1,5 +1,7 @@
 # Enterprise AI Pilot
 
+[![CI](https://github.com/kapucuonur/enterprise-ai-pilot/actions/workflows/ci.yml/badge.svg)](https://github.com/kapucuonur/enterprise-ai-pilot/actions/workflows/ci.yml)
+
 ![Side by side: bob from engineering asks for the senior engineer salary bands and gets "I do not have enough information", with no sources; alice from HR asks the same question and gets the salary bands with the Salary Bands document as source.](docs/images/role-comparison.png)
 
 A small, runnable, source-available reference for taking an internal-knowledge AI assistant from
